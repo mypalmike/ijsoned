@@ -104,6 +104,9 @@ class IJsonEd(object, cmd.Cmd):
   def dump_error(self, error):
     print(error, file=sys.stderr)
 
+  def emptyline(self):
+    pass
+
   def handle_completion(self, text, line, begidx, endidx):
 #    print('>"{}" "{}" "{}" "{}"<'.format(text, line, begidx, endidx))
     val = line.split(' ', 1)[1]
