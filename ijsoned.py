@@ -17,8 +17,17 @@ class IJsonEdException(Exception):
 class IJsonEd(object, cmd.Cmd):
   intro = "IJsonEd. Type help or ? to list commands."
 
-  def __init__(self, doc, path):
+  def __init__(self, filename, path):
     cmd.Cmd.__init__(self)
+
+    doc = {}
+    try:
+      with open(filename) as f_in:
+        doc = json.load(f_in)
+    except:
+      pass  # New file
+
+    self.filename = filename
     self.doc = doc
     self.path = path
 
@@ -79,6 +88,10 @@ class IJsonEd(object, cmd.Cmd):
     except Exception as error:
       self.dump_error(error)
 
+  def do_commit(self, arg):
+    with open(self.filename, 'w') as f_out:
+      json.dump(self.doc, f_out, sort_keys=True, indent=4, separators=(',', ': '))
+
   def do_exit(self, arg):
     """Exit ijsoned"""
     return True
@@ -120,12 +133,12 @@ class IJsonEd(object, cmd.Cmd):
 
 
 def main(argv=sys.argv):
-  root = {}
-  if argv[1]:
-    with open(argv[1]) as f_in:
-      root = json.load(f_in)
+  if len(argv) != 2:
+    print('Usage: ijsoned [filename]')
+    return 1
 
-  IJsonEd(root, '$').cmdloop()
+  filename = argv[1]
+  IJsonEd(filename, '$').cmdloop()
 
 
 def change_current(root, current, expr):
