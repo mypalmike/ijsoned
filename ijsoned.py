@@ -228,17 +228,7 @@ def modify(root, current, expr, new_value):
 
 
 def value_parse(val):
-  if val.startswith('"'):
-    return val.strip('"')
-  elif val == 'true':
-    return True
-  elif val == 'false':
-    return False
-  else:
-    try:
-      return float(val)
-    except:
-      return val
+  return json.loads(val)
 
 
 if __name__ == '__main__':
