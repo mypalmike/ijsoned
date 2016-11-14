@@ -83,7 +83,7 @@ class IJsonEd(object, cmd.Cmd):
   def do_set(self, arg):
     """Change specified path (. for current) to new value"""
     try:
-      expr, new_value = arg.split()
+      expr, new_value = arg.split(None, 1)
       self.doc = modify(self.doc, self.path, expr, new_value)
     except Exception as error:
       self.dump_error(error)
