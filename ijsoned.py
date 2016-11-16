@@ -2,7 +2,6 @@
 
 from __future__ import print_function
 
-from copy import deepcopy
 import cmd
 import json
 import os
@@ -281,8 +280,12 @@ def merge_objects(obj1, obj2):
     total_len = max(len(obj1), len(obj2))
     result = [OBJ_PLACEHOLDER] * total_len
     for idx in range(total_len):
-      # TODO FIX
-      result[idx] = merge_objects(obj1[idx], obj2[idx])
+      if idx >= len(obj1):
+        result[idx] = obj2[idx]
+      elif idx >= len(obj2):
+        result[idx] = obj1[idx]
+      else:
+        result[idx] = merge_objects(obj1[idx], obj2[idx])
     return result
 
   if obj2 is OBJ_PLACEHOLDER:
