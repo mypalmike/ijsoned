@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import cmd
+import difflib
 import json
 import os
 import sys
@@ -27,6 +28,7 @@ class IJsonEd(object, cmd.Cmd):
       pass  # New file
 
     self.filename = filename
+    self.orig_doc = doc
     self.doc = doc
     self.path = path
 
@@ -87,9 +89,20 @@ class IJsonEd(object, cmd.Cmd):
     except Exception as error:
       self.dump_error(error)
 
+  def do_diff(self, arg):
+    """Display a diff between the current json and the most recent commit"""
+    s1 = json.dumps(self.orig_doc, sort_keys=True, indent=4, separators=(',', ': ')).splitlines(True)
+    s2 = json.dumps(self.doc, sort_keys=True, indent=4, separators=(',', ': ')).splitlines(True)
+
+    for line in difflib.unified_diff(s1, s2, fromfile='orig', tofile='current'):
+      sys.stdout.write(line)
+    print()
+
   def do_commit(self, arg):
+    """Save file"""
     with open(self.filename, 'w') as f_out:
       json.dump(self.doc, f_out, sort_keys=True, indent=4, separators=(',', ': '))
+    self.orig_doc = self.doc
 
   def do_exit(self, arg):
     """Exit ijsoned"""
