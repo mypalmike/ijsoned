@@ -183,7 +183,7 @@ def show(root, current, expr, summary_only=False):
     joined = '.'.join([current, expr])
   else:
     joined = current
-#  print('running jsonpath query: "{}"'.format(joined))
+
   jsonpath_expr = parse(joined)
   match = jsonpath_expr.find(root)
   if not match:
@@ -205,33 +205,124 @@ def show(root, current, expr, summary_only=False):
 
 
 def modify(root, current, expr, new_value):
-  new_root = deepcopy(root)
+  val = value_parse(new_value)
 
   if expr == '.':
     joined = current
   else:
     joined = '.'.join([current, expr])
 
-  jsonpath_expr = parse(joined)
-  match = jsonpath_expr.find(root)
-  if not match:
-    raise IJsonEdException('Jsonpath expression {} has no match'.format(joined))
-  for curr in match:
-    path = str(curr.full_path)
-    node = new_root
-    for sub_path in path.split('.')[:-1]:
-      if sub_path.startswith('['):
-        index = int(sub_path.lstrip('[').rstrip(']'))
-      else:
-        index = sub_path
-      node = node[index]
-    node[path.split('.')[-1]] = value_parse(new_value)
+  if joined.startswith('$.'):
+    joined = joined[2:]
 
-  return new_root
+  new_obj = build_object(joined, val)
+  merged = merge_objects(root, new_obj)
+  cleaned = replace_placeholders(merged)
+
+  return cleaned
 
 
 def value_parse(val):
   return json.loads(val)
+
+
+OBJ_PLACEHOLDER = object()
+
+
+def replace_placeholders(obj):
+  typ = type(obj)
+
+  if typ is dict:
+    result = {}
+    for key, val in obj.items():
+      result[key] = replace_placeholders(val)
+    return result
+
+  if typ is list:
+    result = [None] * len(obj)
+    for idx, val in enumerate(obj):
+      result[idx] = replace_placeholders(val)
+    return result
+
+  if obj is OBJ_PLACEHOLDER:
+    return None
+
+  return obj
+
+
+def merge_objects(obj1, obj2):
+  """
+  Given two json-serializable objects, merge into a result object.
+
+  """
+  type1 = type(obj1)
+  type2 = type(obj2)
+
+  if type1 is dict and type2 is dict:
+    result = {}
+    keys1 = set(obj1.keys())
+    keys2 = set(obj2.keys())
+    keep1 = keys1 - keys2
+    keep2 = keys2 - keys1
+    shared = keys1 & keys2
+
+    for key in keep1:
+      result[key] = obj1[key]
+
+    for key in keep2:
+      result[key] = obj2[key]
+
+    for key in shared:
+      result[key] = merge_objects(obj1[key], obj2[key])
+
+    return result
+
+  if type1 is list and type2 is list:
+    total_len = max(len(obj1), len(obj2))
+    result = [OBJ_PLACEHOLDER] * total_len
+    for idx in range(total_len):
+      # TODO FIX
+      result[idx] = merge_objects(obj1[idx], obj2[idx])
+    return result
+
+  if obj2 is OBJ_PLACEHOLDER:
+    return obj1
+
+  return obj2
+
+
+def build_object(expr, val):
+  """
+  Recursively build a (potentially) deep, json-serializable object that encapsulates
+  one value. Format for expr is a subset of jsonpath with dot notation for keys, parens
+  for lists. e.g. build_object(expr="foo.bar[3].baz", val="hello") results in
+  the object:
+
+  {'foo': {'bar': [None, None, None, {'baz': 5}]}}
+
+  Implementation is recursive right-to-left parser.
+
+  """
+  if not expr:
+    return val
+
+  # Parse list
+  if expr[-1] == ']':
+    remainder, list_index = expr.rsplit('[')
+    remainder = remainder.rstrip('.')
+    list_index = list_index[:-1]
+    list_index = int(list_index)
+    new_list = [OBJ_PLACEHOLDER] * (list_index + 1)
+    new_list[list_index] = val
+    return build_object(remainder, new_list)
+
+  # Parse dict
+  idx_dot = expr.rfind('.')
+  if idx_dot == -1:
+    return {expr: val}
+  else:
+    remainder, current = expr.rsplit('.', 1)
+    return build_object(remainder, {current: val})
 
 
 if __name__ == '__main__':
