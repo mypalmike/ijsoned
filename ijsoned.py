@@ -89,6 +89,9 @@ class IJsonEd(object, cmd.Cmd):
     except Exception as error:
       self.dump_error(error)
 
+  def complete_set(self, text, line, begidx, endidx):
+    return self.handle_completion(text, line, begidx, endidx)
+
   def do_diff(self, arg):
     """Display a diff between the current json and the most recent commit"""
     s1 = json.dumps(self.orig_doc, sort_keys=True, indent=4, separators=(',', ': ')).splitlines(True)
@@ -163,8 +166,6 @@ def change_current(root, current, expr):
   if not match:
     raise IJsonEdException('Jsonpath expression {} has no match'.format(joined))
   first = match[0]
-  # if not type(first) in (list, dict):
-  #   raise IJsonEdException('Jsonpath of {} is a leaf'.format(joined))
   return str(first.full_path)
 
 
